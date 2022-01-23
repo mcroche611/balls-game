@@ -21,6 +21,7 @@ export default class Boot extends Phaser.Scene {
     
     this.load.setPath('assets/sprites/');
     this.load.image('spritesheet_ball', 'spritesheet_ball.png');
+    this.load.image('ball', 'ball.png');
 
     this.load.spritesheet('balls_sprite', 
     'spritesheet_cruz.png',

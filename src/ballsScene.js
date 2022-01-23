@@ -1,3 +1,4 @@
+import Ball from './ball.js';
 import Player from './player.js';
 
 /**
@@ -8,11 +9,13 @@ import Player from './player.js';
  * El juego termina cuando el jugador ha recogido 10 estrellas.
  * @extends Phaser.Scene
  */
-export default class BallsScene extends Phaser.Scene {
+export default class BallsScene extends Phaser.Scene
+{
   /**
    * Constructor de la escena
    */
-  constructor() {
+  constructor()
+  {
     super({ key: 'ballsscene' });
   }
 
@@ -22,7 +25,31 @@ export default class BallsScene extends Phaser.Scene {
   create() 
   {
     //FONDO
-    this.add.rectangle(0, 0, 640, 640, 0xffffff).setOrigin(0,0);
+    this.add.rectangle(0, 0, 640, 640, 0xffffff).setOrigin(0, 0);
+
+    this.numIniBalls = 1;
+    this.collisions = this.numIniBalls * 7;
+    this.time = 30;
+    this.collisionEnabled = true;
+
+    let estilo = {
+      fontFamily: 'Play',
+      fontSize: '20px',
+      color: '#1020DD'
+    };
+    this.labelTime = this.add.text(34, 34, "", estilo);
+    this.labelCollisions = this.add.text(134, 34, "", estilo);
+
+    this.myTimeout = this.sys.time.addEvent({
+      delay: 1000,                // ms
+      callback: this.updateTime,
+      args: [],
+      callbackScope: this,
+      loop: true
+    });
+
+    this.labelTime.text = "Time: " + this.time;
+    this.updateCollisions();
 
     /*
     //CON RECTANGULOS
@@ -48,9 +75,46 @@ export default class BallsScene extends Phaser.Scene {
     this.walls = mapd.createStaticLayer('paredes', tilesetd, 0, 0);
 
     this.walls.setCollisionByExclusion(-1, true);
-    this.debugDraw(this.walls, this);
+    //this.debugDraw(this.walls, this);
 
     this.player = new Player(this, 200, 200);
+
+    this.physics.add.collider(this.player, this.walls);
+
+    this.balls = this.add.group();
+    this.createBalls(this.numIniBalls, 1, 300, 300); //Add random
+
+    this.physics.add.collider(this.player, this.balls, this.divideBall);
+    this.physics.add.collider(this.walls, this.balls);
+  }
+
+  createBalls(numBalls, size, posX, posY)
+  {
+    for (let i = 0; i < numBalls; i++)
+    {
+      let ball = new Ball(this, posX + i * 10, posY + i * 10, size);
+      this.balls.add(ball);
+    }
+
+  }
+
+  updateTime()
+  {
+    if (this.time > 0)
+    {
+      this.time--;
+      this.labelTime.text = "Time: " + this.time;
+
+      if (this.time == 0)
+      {
+        this.checkWin();
+      }
+    } 
+  }
+
+  updateCollisions()
+  {
+    this.labelCollisions.text = "Collisions: " + this.collisions;
   }
 
   debugDraw(layer, scene)
@@ -63,4 +127,81 @@ export default class BallsScene extends Phaser.Scene {
     })
   }
 
+  divideBall(player, ball)
+  {
+    console.log("collide with ball");
+
+    if (!player.scene.collisionEnabled)
+      return;
+
+    player.scene.collisions--;
+    player.scene.updateCollisions();
+
+    if (ball.size > 0.25)
+    {
+      player.scene.collisionEnabled = false;
+      ball.scene.createBalls(2, ball.size / 2, ball.x, ball.y);
+      ball.destroy();
+
+      player.scene.sys.time.addEvent({
+        delay: 1000,                // ms
+        callback: player.scene.enableCollision,
+        args: [],
+        callbackScope: player.scene,
+        loop: false
+      });
+    }
+    else
+    {
+      ball.destroy();
+
+      player.scene.checkWin();
+    }
+  }
+
+  checkWin()
+  {
+    if (this.balls.getLength() == 0)
+    {
+      console.log("Win");
+      let estilo = {
+        fontFamily: 'Play',
+        fontSize: '60px',
+        color: '#1020DD'
+      };
+      this.add.rectangle(190, 250, 300, 80, 0x38a7f1).setOrigin(0, 0);
+      this.add.text(200, 250, "YOU WON", estilo);
+
+      this.pauseGame();
+    }
+    else if (this.time <= 0)
+    {
+      console.log("Lose");
+      let estilo = {
+        fontFamily: 'Play',
+        fontSize: '60px',
+        color: '#ff0000'
+      };
+      this.add.rectangle(190, 250, 360, 80, 0xffb24e).setOrigin(0, 0);
+      this.add.text(200, 250, "GAME OVER", estilo);
+
+      this.pauseGame();
+    }
+  }
+
+  enableCollision()
+  {
+    this.collisionEnabled = true;
+  }
+
+  pauseGame()
+  {
+    this.player.body.setVelocity(0, 0);
+    this.player.inputEnabled = false;
+
+    this.balls.children.iterate(child =>
+    {
+      child.body.setVelocity(0, 0);
+    })
+  }
 }
